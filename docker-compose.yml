@@ -1,0 +1,31 @@
+services:
+  redis:
+    # redis-stack-server = Redis + módulos RedisJSON y RediSearch.
+    # El checkpointer de LangGraph los necesita; el Redis "pelado" no los trae.
+    image: redis/redis-stack-server:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # La API también puede correr en Docker: `docker compose up --build`.
+  # Para desarrollar con --reload usa solo `docker compose up -d redis` y uvicorn en tu PC.
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      # Dentro de la red de Docker, Redis se llama "redis", no "localhost".
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  redis_data:
